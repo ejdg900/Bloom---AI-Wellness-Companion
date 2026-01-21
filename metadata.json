@@ -1,0 +1,7 @@
+{
+  "name": "Bloom - AI Wellness Companion",
+  "description": "A compassionate AI mental health companion designed to provide emotional support, wellness guidance, and a safe space for users.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
