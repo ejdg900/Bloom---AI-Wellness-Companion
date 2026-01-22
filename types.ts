@@ -1,3 +1,4 @@
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -18,6 +19,14 @@ export interface MoodEntry {
   label: string;
   timestamp: Date;
   note: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: Date;
+  mood?: string; // emoji
 }
 
 export interface WellnessTool {

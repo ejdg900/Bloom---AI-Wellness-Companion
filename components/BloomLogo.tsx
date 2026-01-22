@@ -16,49 +16,40 @@ const BloomLogo: React.FC<BloomLogoProps> = ({ size = 40, className = '' }) => {
       className={className}
     >
       <defs>
-        <linearGradient id="petalGradient" x1="32" y1="14" x2="32" y2="46" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0d9488" /> {/* Teal 600 */}
-          <stop offset="1" stopColor="#0f766e" /> {/* Teal 700 */}
+        {/* Purple Gradient (Top Center) */}
+        <linearGradient id="gradPurple" x1="32" y1="12" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#c084fc" /> {/* Purple 400 */}
+          <stop offset="1" stopColor="#7c3aed" /> {/* Violet 600 */}
         </linearGradient>
-         <linearGradient id="bgGradient" x1="32" y1="0" x2="32" y2="64" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#ffe4e6" /> {/* Rose 100 */}
-          <stop offset="1" stopColor="#fecdd3" /> {/* Rose 200 */}
+
+        {/* Pink Gradient (Middle Sides) */}
+        <linearGradient id="gradPink" x1="14" y1="26" x2="50" y2="52" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#f472b6" /> {/* Pink 400 */}
+          <stop offset="1" stopColor="#db2777" /> {/* Pink 600 */}
+        </linearGradient>
+
+        {/* Green Gradient (Bottom Sides) */}
+        <linearGradient id="gradGreen" x1="10" y1="38" x2="54" y2="52" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4ade80" /> {/* Green 400 */}
+          <stop offset="1" stopColor="#059669" /> {/* Emerald 600 */}
         </linearGradient>
       </defs>
 
-      {/* Background Shape - Soft Squircle */}
-      <rect x="0" y="0" width="64" height="64" rx="20" fill="url(#bgGradient)" />
+      {/* Background: White Rounded Square */}
+      <rect x="0" y="0" width="64" height="64" rx="16" fill="white" />
 
-      {/* Main Flower/Lotus Shape */}
-      <g transform="translate(0, 2)">
-        {/* Left Petal Outline */}
-        <path 
-          d="M26 32C26 32 20 30 16 26C14 24 16 20 20 18C24 16 28 22 32 26" 
-          stroke="#0d9488" 
-          strokeWidth="3.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        />
-        {/* Right Petal Outline */}
-         <path 
-          d="M38 32C38 32 44 30 48 26C50 24 48 20 44 18C40 16 36 22 32 26" 
-          stroke="#0d9488" 
-          strokeWidth="3.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        />
-        
-        {/* Center Petal (Solid) */}
-        <path 
-          d="M32 14C32 14 39 24 39 32C39 39 35 44 32 46C29 44 25 39 25 32C25 24 32 14 32 14Z" 
-          fill="url(#petalGradient)" 
-        />
-        
-        {/* Heart Core (Wellness Symbol) */}
-        <path 
-          d="M32 28C33.2 26.8 35 26.8 36.2 28C37.4 29.2 37.4 31 36.2 32.2L32 36.4L27.8 32.2C26.6 31 26.6 29.2 27.8 28C29 26.8 30.8 26.8 32 28Z" 
-          fill="#ffffff" 
-        />
+      {/* Intertwined Lotus Paths */}
+      <g strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        {/* Bottom Leaves (Green) */}
+        <path d="M32 52 C 24 54, 6 50, 10 38 C 14 32, 28 46, 32 52" stroke="url(#gradGreen)" />
+        <path d="M32 52 C 40 54, 58 50, 54 38 C 50 32, 36 46, 32 52" stroke="url(#gradGreen)" />
+
+        {/* Middle Petals (Pink) */}
+        <path d="M32 52 C 22 50, 10 40, 14 26 C 18 20, 28 35, 32 52" stroke="url(#gradPink)" />
+        <path d="M32 52 C 42 50, 54 40, 50 26 C 46 20, 36 35, 32 52" stroke="url(#gradPink)" />
+
+        {/* Center Petal (Purple) - Drawn last to be on top */}
+        <path d="M32 52 C 24 40, 24 20, 32 12 C 40 20, 40 40, 32 52" stroke="url(#gradPurple)" />
       </g>
     </svg>
   );
