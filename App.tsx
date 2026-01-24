@@ -123,15 +123,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-m3-surface sm:rounded-[2.5rem] overflow-hidden border-x border-b sm:border border-m3-outline relative shadow-2xl transition-all duration-medium2 ease-emphasized">
+    // Updated container: added pt-safe to handle notches when in standalone mode
+    <div className="flex flex-col h-full bg-m3-surface sm:rounded-[2.5rem] overflow-hidden border-x border-b sm:border border-m3-outline relative shadow-2xl transition-all duration-medium2 ease-emphasized pt-safe">
       {/* Header - M3 Small Top App Bar */}
       <header className="px-5 py-3 bg-m3-surfaceContainerLow flex justify-between items-center z-20 sticky top-0 border-b border-m3-outline/20">
         <div className="flex items-center gap-3">
           <BloomLogo size={36} />
           <h1 className="text-xl font-bold text-m3-onSurface tracking-tight">Bloom</h1>
         </div>
-        {/* Placeholder for header actions if needed, removed SOS from here */}
-        <div className="w-10"></div> 
+        <div className="w-10"></div> {/* Spacer to balance logo */}
       </header>
 
       {/* Main Content */}
@@ -139,36 +139,12 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
 
-      {/* Heart FAB (Floating Action Button) - Bottom Right, above Nav */}
-      <div className="absolute bottom-24 right-5 z-30 pointer-events-none">
-          <button 
-             onClick={() => setSosOpen(true)}
-             className="pointer-events-auto w-16 h-16 rounded-[22px] bg-rose-200 text-rose-600 shadow-xl border border-rose-300/50 flex items-center justify-center hover:bg-rose-300 hover:scale-105 active:scale-95 transition-all duration-medium2 ease-emphasized-decelerate group"
-             aria-label="Emergency SOS"
-          >
-             <div className="relative flex items-center justify-center animate-heartbeat">
-                 {/* Filled Heart used as background for text */}
-                 <Heart size={42} fill="currentColor" strokeWidth={0} />
-                 
-                 {/* SOS Text Overlay */}
-                 <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-rose-100 pt-1 tracking-tight select-none pointer-events-none">
-                    SOS
-                 </span>
-             </div>
-             
-             {/* Tooltip hint */}
-             <span className="absolute right-full mr-3 bg-stone-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Crisis Support
-             </span>
-          </button>
-      </div>
-
       {/* SOS Modal Overlay */}
       {sosOpen && <SosModal onClose={() => setSosOpen(false)} />}
 
-      {/* M3 Navigation Bar */}
-      <nav className="bg-m3-surfaceContainerLow pt-2 pb-4 z-20 border-t border-m3-outline/50 relative">
-        <div className="flex justify-around items-center px-2">
+      {/* M3 Navigation Bar with Centered SOS Heart */}
+      <nav className="bg-m3-surfaceContainerLow pb-4 z-20 border-t border-m3-outline/50 relative pb-safe">
+        <div className="flex justify-between items-end px-4 pt-2">
             <NavButton
                 active={mode === AppMode.HOME}
                 onClick={() => setMode(AppMode.HOME)}
@@ -181,6 +157,25 @@ const App: React.FC = () => {
                 icon={<MessageCircle />}
                 label="Chat"
             />
+            
+            {/* Center SOS Heart Button - Floating Style (Updated: Bigger & Text inside) */}
+            <div className="relative -top-10 mx-2">
+               <button 
+                  onClick={() => setSosOpen(true)}
+                  className="group relative flex items-center justify-center"
+                  aria-label="Emergency SOS"
+               >
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 shadow-xl shadow-rose-200 text-white flex items-center justify-center border-[6px] border-m3-surfaceContainerLow animate-heartbeat active:scale-95 transition-transform">
+                     <div className="relative flex items-center justify-center">
+                        <Heart size={44} fill="currentColor" strokeWidth={0} />
+                        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[11px] font-black text-rose-500 mt-[2px] tracking-tighter">
+                          SOS
+                        </span>
+                     </div>
+                  </div>
+               </button>
+            </div>
+
             <NavButton
                 active={mode === AppMode.MOOD}
                 onClick={() => setMode(AppMode.MOOD)}
@@ -291,7 +286,8 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     switch (mode) {
       case 'PANIC':
         return (
-          <div className="flex flex-col items-center text-center animate-scale-in w-full max-w-sm">
+          // Added pt-safe to modal content to prevent clipping on notched phones
+          <div className="flex flex-col items-center text-center animate-scale-in w-full max-w-sm pt-safe">
             <div className="relative mb-8">
                <div className="w-40 h-40 bg-rose-100 rounded-full flex items-center justify-center animate-pulse">
                  <div className="w-32 h-32 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-xl">
@@ -310,7 +306,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       case 'ANXIETY':
         const currentStep = GROUNDING_STEPS[anxietyStep];
         return (
-          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4">
+          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4 pt-safe">
             <div className="flex items-center gap-2 mb-6"><Eye className="text-teal-600" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Grounding Technique</span></div>
             <div className="w-full mb-8"><div className="flex justify-between mb-2 px-2">{GROUNDING_STEPS.map((_, idx) => (<div key={idx} className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors duration-medium2 ${idx <= anxietyStep ? 'bg-teal-500' : 'bg-stone-200'}`} />))}</div></div>
             <div className={`w-24 h-24 rounded-full ${currentStep.bg} flex items-center justify-center mb-6 transition-colors duration-500`}><span className={`text-4xl font-bold ${currentStep.color}`}>{currentStep.count}</span></div>
@@ -320,7 +316,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         );
       case 'OVERWHELM':
         return (
-          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4">
+          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4 pt-safe">
              <div className="flex items-center gap-2 mb-8"><Layers className="text-orange-500" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Micro-Steps</span></div>
             <h3 className="text-xl font-bold text-stone-800 mb-2">Let's do just one thing.</h3>
             <div className="bg-orange-50 border-2 border-orange-100 p-8 rounded-[2rem] w-full mb-8 shadow-sm relative overflow-hidden"><div className="absolute top-0 right-0 p-4 opacity-10"><Check size={80} className="text-orange-500" /></div><p className="text-2xl font-bold text-orange-900 leading-tight">"{MICRO_TASKS[taskIndex]}"</p></div>
@@ -330,7 +326,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       case 'BREATHE':
         const instr = getBreatheInstruction();
         return (
-           <div className="flex flex-col items-center text-center animate-fade-in w-full">
+           <div className="flex flex-col items-center text-center animate-fade-in w-full pt-safe">
              <div className="flex items-center gap-2 mb-12"><Wind className="text-blue-500" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Box Breathing</span></div>
              <div className="relative flex items-center justify-center mb-12"><div className={`w-64 h-64 border-4 border-blue-50 rounded-full flex items-center justify-center transition-all duration-1000 ease-in-out ${instr.scale === 'scale-125' ? 'border-blue-100' : ''}`}><div className={`w-40 h-40 bg-blue-100/50 rounded-full absolute transition-all duration-[1000ms] ease-linear ${instr.scale === 'scale-125' ? 'scale-150 opacity-100' : 'scale-100 opacity-60'}`}></div><div className="w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 relative"><span className={`text-2xl font-bold transition-colors duration-300 ${instr.color}`}>{instr.text}</span><span className="text-4xl font-bold text-stone-300 mt-1 font-mono">{timer}</span></div></div></div>
              <p className="text-stone-400 max-w-xs font-medium">Focus on the circle. Follow the rhythm.</p>
@@ -341,7 +337,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col p-6 animate-fade-in transition-all duration-medium2">
+    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col p-6 animate-fade-in transition-all duration-medium2 pt-safe">
       <div className="flex justify-end"><button onClick={onClose} className="p-2 bg-stone-100 rounded-full text-stone-500 hover:bg-stone-200 transition-colors"><X size={24} /></button></div>
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         {mode === 'SELECT' ? (
