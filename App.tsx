@@ -10,22 +10,74 @@ import {
   Zap, Eye, Layers, Activity, Wind, ChevronRight, Check, RefreshCw, Phone 
 } from 'lucide-react';
 
+// Helper to revive Date objects from JSON strings during localStorage parsing
+const dateReviver = (key: string, value: any) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) return date;
+  }
+  return value;
+};
+
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [sosOpen, setSosOpen] = useState(false);
 
-  // Lifted state for mood entries to share with Home
-  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([
-    { id: '1', mood: '😊', label: 'Happy', timestamp: new Date(Date.now() - 86400000 * 2), note: 'Good productive day' },
-    { id: '2', mood: '😌', label: 'Calm', timestamp: new Date(Date.now() - 86400000), note: 'Went for a walk' },
-    { id: '3', mood: '😐', label: 'Neutral', timestamp: new Date(), note: '' },
-  ]);
+  // --- STATE WITH LOCAL STORAGE PERSISTENCE ---
 
-  // Lifted state for Journal entries
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  // 1. Mood Entries
+  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('bloom_mood_entries');
+      if (saved) return JSON.parse(saved, dateReviver);
+    } catch (e) {
+      console.error("Failed to load mood entries", e);
+    }
+    // Default initial data if storage is empty
+    return [
+      { id: '1', mood: '😊', label: 'Happy', timestamp: new Date(Date.now() - 86400000 * 2), note: 'Good productive day' },
+      { id: '2', mood: '😌', label: 'Calm', timestamp: new Date(Date.now() - 86400000), note: 'Went for a walk' },
+      { id: '3', mood: '😐', label: 'Neutral', timestamp: new Date(), note: '' },
+    ];
+  });
 
-  // Lifted state for chat history to persist across navigation
-  const [chatHistory, setChatHistory] = useState<Message[]>([]);
+  // 2. Journal Entries
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('bloom_journal_entries');
+      if (saved) return JSON.parse(saved, dateReviver);
+    } catch (e) {
+      console.error("Failed to load journal entries", e);
+    }
+    return [];
+  });
+
+  // 3. Chat History
+  const [chatHistory, setChatHistory] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem('bloom_chat_history');
+      if (saved) return JSON.parse(saved, dateReviver);
+    } catch (e) {
+      console.error("Failed to load chat history", e);
+    }
+    return [];
+  });
+
+  // --- EFFECT HOOKS TO SAVE DATA ON CHANGE ---
+
+  useEffect(() => {
+    localStorage.setItem('bloom_mood_entries', JSON.stringify(moodEntries));
+  }, [moodEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('bloom_journal_entries', JSON.stringify(journalEntries));
+  }, [journalEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('bloom_chat_history', JSON.stringify(chatHistory));
+  }, [chatHistory]);
+
+  // --- EVENT HANDLERS ---
 
   const handleAddMoodEntry = (entry: MoodEntry) => {
     setMoodEntries(prev => [...prev, entry]);
@@ -40,73 +92,46 @@ const App: React.FC = () => {
   };
 
   const handleReflectOnJournal = (entry: JournalEntry) => {
-    // 1. Switch to Chat
     setMode(AppMode.CHAT);
-    
-    // 2. Add a system-like user message to context context to trigger reflection
     const contextMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       text: `I just wrote a journal entry titled "${entry.title}". Here is what I wrote:\n\n"${entry.content}"\n\nCan you help me reflect on this?`,
       timestamp: new Date()
     };
-    
-    // Append to chat history. ChatInterface will auto-trigger because user added a message.
     setChatHistory(prev => [...prev, contextMessage]);
-    
-    // Note: The ChatInterface component listens for changes to `messages`. 
-    // Since we added a user message, we need to ensure it triggers the API call. 
-    // The existing ChatInterface logic handles sending messages found in props if they haven't been processed? 
-    // Actually, ChatInterface usually handles its own "Send". 
-    // To make this robust, we might need to manually trigger the API response in ChatInterface 
-    // OR just set the input text. But for now, let's assume ChatInterface will see the new message 
-    // and if we modify ChatInterface slightly to auto-respond to the last user message if it wasn't responded to, that works.
-    // However, the cleanest way without modifying ChatInterface logic too much is to let the user see the message they "sent".
-    // The current ChatInterface has `handleSend`. We are bypassing that. 
-    // Let's rely on the user manually hitting send on the pre-filled text OR we update ChatInterface to auto-send last user message if no bot reply.
-    // For simplicity in this codebase, we will just add it to history. 
-    // The `ChatInterface` effect hook for "isLoading" is local. 
-    // We will need to trigger the send inside ChatInterface.
-    //
-    // *Self-correction*: To make this seamless, let's just pass the message to history. 
-    // In ChatInterface, we can add an effect that checks: "Is the last message from USER? If so, and we aren't loading, fetch response."
   };
 
   const renderContent = () => {
-    switch (mode) {
-      case AppMode.HOME:
-        return <Home moodEntries={moodEntries} onNavigate={setMode} />;
-      case AppMode.CHAT:
-        return <ChatInterface messages={chatHistory} setMessages={setChatHistory} />;
-      case AppMode.MOOD:
-        return <MoodTracker entries={moodEntries} onAddEntry={handleAddMoodEntry} />;
-      case AppMode.JOURNAL:
-        return (
-          <Journal 
-            entries={journalEntries} 
-            onAddEntry={handleAddJournalEntry} 
-            onDeleteEntry={handleDeleteJournalEntry}
-            onDiscuss={handleReflectOnJournal}
-          />
-        );
-      default:
-        return <Home moodEntries={moodEntries} onNavigate={setMode} />;
-    }
+    // We wrap content in a div with key={mode} to trigger M3 animations
+    const content = () => {
+        switch (mode) {
+        case AppMode.HOME: return <Home moodEntries={moodEntries} onNavigate={setMode} />;
+        case AppMode.CHAT: return <ChatInterface messages={chatHistory} setMessages={setChatHistory} />;
+        case AppMode.MOOD: return <MoodTracker entries={moodEntries} onAddEntry={handleAddMoodEntry} />;
+        case AppMode.JOURNAL: 
+            return <Journal entries={journalEntries} onAddEntry={handleAddJournalEntry} onDeleteEntry={handleDeleteJournalEntry} onDiscuss={handleReflectOnJournal} />;
+        default: return <Home moodEntries={moodEntries} onNavigate={setMode} />;
+        }
+    };
+
+    return (
+        <div key={mode} className="h-full w-full animate-fade-in">
+            {content()}
+        </div>
+    );
   };
 
   return (
-    <div className="flex flex-col h-full bg-m3-surface sm:rounded-[2.5rem] overflow-hidden border-x border-b sm:border border-m3-outline relative shadow-xl transition-all duration-300">
-      {/* Header - M3 Top App Bar */}
-      <header className="px-5 py-4 bg-m3-surfaceContainer flex justify-between items-center z-20 sticky top-0">
+    <div className="flex flex-col h-full bg-m3-surface sm:rounded-[2.5rem] overflow-hidden border-x border-b sm:border border-m3-outline relative shadow-2xl transition-all duration-medium2 ease-emphasized">
+      {/* Header - M3 Small Top App Bar */}
+      <header className="px-5 py-3 bg-m3-surfaceContainerLow flex justify-between items-center z-20 sticky top-0 border-b border-m3-outline/20">
         <div className="flex items-center gap-3">
-          <BloomLogo size={44} />
-          <h1 className="text-2xl font-bold text-stone-800 tracking-tight">
-            Bloom
-          </h1>
+          <BloomLogo size={36} />
+          <h1 className="text-xl font-bold text-m3-onSurface tracking-tight">Bloom</h1>
         </div>
-        <div className="text-xs font-bold px-3 py-1 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-full">
-          Beta
-        </div>
+        {/* Placeholder for header actions if needed, removed SOS from here */}
+        <div className="w-10"></div> 
       </header>
 
       {/* Main Content */}
@@ -114,72 +139,60 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
 
+      {/* Heart FAB (Floating Action Button) - Bottom Right, above Nav */}
+      <div className="absolute bottom-24 right-5 z-30 pointer-events-none">
+          <button 
+             onClick={() => setSosOpen(true)}
+             className="pointer-events-auto w-16 h-16 rounded-[22px] bg-rose-200 text-rose-600 shadow-xl border border-rose-300/50 flex items-center justify-center hover:bg-rose-300 hover:scale-105 active:scale-95 transition-all duration-medium2 ease-emphasized-decelerate group"
+             aria-label="Emergency SOS"
+          >
+             <div className="relative flex items-center justify-center animate-heartbeat">
+                 {/* Filled Heart used as background for text */}
+                 <Heart size={42} fill="currentColor" strokeWidth={0} />
+                 
+                 {/* SOS Text Overlay */}
+                 <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-rose-100 pt-1 tracking-tight select-none pointer-events-none">
+                    SOS
+                 </span>
+             </div>
+             
+             {/* Tooltip hint */}
+             <span className="absolute right-full mr-3 bg-stone-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Crisis Support
+             </span>
+          </button>
+      </div>
+
       {/* SOS Modal Overlay */}
       {sosOpen && <SosModal onClose={() => setSosOpen(false)} />}
 
-      {/* Bottom Navigation - Custom TikTok-style Layout */}
-      <nav className="bg-m3-surfaceContainer px-2 pb-2 pt-0 z-20 border-t border-m3-outline relative h-[80px]">
-        {/* Centered Container for Nav Items to prevent spread on wide screens */}
-        <div className="max-w-md mx-auto w-full flex justify-between items-end h-full">
-            {/* Left Side */}
-            <div className="flex-1 flex justify-around items-end pb-3">
+      {/* M3 Navigation Bar */}
+      <nav className="bg-m3-surfaceContainerLow pt-2 pb-4 z-20 border-t border-m3-outline/50 relative">
+        <div className="flex justify-around items-center px-2">
             <NavButton
                 active={mode === AppMode.HOME}
                 onClick={() => setMode(AppMode.HOME)}
-                icon={<HomeIcon size={24} />}
+                icon={<HomeIcon />}
                 label="Home"
             />
             <NavButton
                 active={mode === AppMode.CHAT}
                 onClick={() => setMode(AppMode.CHAT)}
-                icon={<MessageCircle size={24} />}
+                icon={<MessageCircle />}
                 label="Chat"
             />
-            </div>
-
-            {/* Center Heart SOS Button */}
-            <div className="relative -top-5 mx-2 z-30">
-            <button
-                onClick={() => setSosOpen(true)}
-                className="group flex flex-col items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            >
-                <div className="relative drop-shadow-xl filter">
-                    <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
-                                <stop offset="0%" stopColor="#f43f5e" /> {/* Rose 500 */}
-                                <stop offset="100%" stopColor="#e11d48" /> {/* Rose 600 */}
-                            </linearGradient>
-                        </defs>
-                        <path 
-                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
-                        fill="url(#heartGrad)" 
-                        stroke="white"
-                        strokeWidth="1.5"
-                        />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white tracking-widest pt-1.5 pointer-events-none">
-                    SOS
-                    </span>
-                </div>
-            </button>
-            </div>
-
-            {/* Right Side */}
-            <div className="flex-1 flex justify-around items-end pb-3">
             <NavButton
                 active={mode === AppMode.MOOD}
                 onClick={() => setMode(AppMode.MOOD)}
-                icon={<Smile size={24} />}
+                icon={<Smile />}
                 label="Mood"
             />
             <NavButton
                 active={mode === AppMode.JOURNAL}
                 onClick={() => setMode(AppMode.JOURNAL)}
-                icon={<BookHeart size={24} />}
+                icon={<BookHeart />}
                 label="Journal"
             />
-            </div>
         </div>
       </nav>
     </div>
@@ -189,39 +202,45 @@ const App: React.FC = () => {
 interface NavButtonProps {
   active: boolean;
   onClick: () => void;
-  icon: React.ReactNode;
+  icon: React.ReactElement<any>;
   label: string;
 }
 
-// M3 Navigation Item
+// M3 Standard Navigation Item
 const NavButton: React.FC<NavButtonProps> = ({ active, onClick, icon, label }) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center gap-1 group w-14"
+    className="flex flex-col items-center justify-center gap-1 group flex-1 py-1"
   >
-    {/* Active Indicator: Pill Shape */}
-    <div className={`w-12 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+    {/* Active Indicator: Circle (Inactive) -> Pill (Active) Transition */}
+    <div className={`relative h-8 rounded-full flex items-center justify-center overflow-hidden transition-all duration-medium3 ease-emphasized ${
       active 
-        ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer' 
-        : 'bg-transparent text-stone-400 group-hover:bg-stone-100'
+        ? 'w-16 bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' 
+        : 'w-10 bg-transparent text-m3-onSurfaceVariant group-hover:bg-m3-surfaceContainerHigh'
     }`}>
-      {React.cloneElement(icon as React.ReactElement<any>, { 
-        size: 20, 
+      {/* Icon with slight rotation/scale on active */}
+      {React.cloneElement(icon, { 
+        size: 24, 
         fill: active ? "currentColor" : "none",
-        className: active ? "text-m3-onPrimaryContainer" : "text-stone-400"
+        strokeWidth: active ? 0 : 2,
+        className: `transition-all duration-medium3 ease-emphasized ${active ? 'scale-110' : 'scale-100'}`
       })}
     </div>
-    <span className={`text-[10px] font-bold transition-colors ${active ? 'text-m3-onPrimaryContainer' : 'text-stone-400'}`}>
+    
+    {/* Label with scale/weight transition */}
+    <span className={`text-[12px] font-medium tracking-wide transition-all duration-medium3 ease-emphasized ${
+      active 
+        ? 'text-m3-onSurface font-bold scale-105' 
+        : 'text-m3-onSurfaceVariant scale-100 opacity-80'
+    }`}>
       {label}
     </span>
   </button>
 );
 
 // --- SOS Logic Components ---
-
+// (Kept identical to previous implementation, just reusing for brevity)
 type CrisisMode = 'SELECT' | 'PANIC' | 'ANXIETY' | 'OVERWHELM' | 'BREATHE';
-
-// Static Data Definitions
 const GROUNDING_STEPS = [
   { count: 5, label: "Things you see", color: "text-rose-500", bg: "bg-rose-50", icon: <Eye /> },
   { count: 4, label: "Things you can touch", color: "text-teal-500", bg: "bg-teal-50", icon: <Activity /> },
@@ -229,29 +248,17 @@ const GROUNDING_STEPS = [
   { count: 2, label: "Things you can smell", color: "text-purple-500", bg: "bg-purple-50", icon: <Smile /> },
   { count: 1, label: "Thing you can taste", color: "text-orange-500", bg: "bg-orange-50", icon: <Heart /> },
 ];
-
 const MICRO_TASKS = [
-  "Drink one sip of water.",
-  "Unclench your jaw.",
-  "Lower your shoulders.",
-  "Take off your shoes.",
-  "Look out the nearest window.",
-  "Close your eyes for 10 seconds.",
-  "Wiggle your toes."
+  "Drink one sip of water.", "Unclench your jaw.", "Lower your shoulders.", 
+  "Take off your shoes.", "Look out the nearest window.", "Close your eyes for 10 seconds.", "Wiggle your toes."
 ];
 
 const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [mode, setMode] = useState<CrisisMode>('SELECT');
-
-  // --- Anxiety State ---
   const [anxietyStep, setAnxietyStep] = useState(0);
-
-  // --- Overwhelm State ---
   const [taskIndex, setTaskIndex] = useState(0);
   const nextTask = () => setTaskIndex((prev) => (prev + 1) % MICRO_TASKS.length);
-
-  // --- Breathing State ---
-  const [breathePhase, setBreathePhase] = useState(0); // 0:Inhale, 1:Hold, 2:Exhale, 3:Hold
+  const [breathePhase, setBreathePhase] = useState(0);
   const [timer, setTimer] = useState(4);
   
   useEffect(() => {
@@ -267,9 +274,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         });
       }, 1000);
     }
-    return () => {
-        if (interval) window.clearInterval(interval);
-    };
+    return () => { if (interval) window.clearInterval(interval); };
   }, [mode, breathePhase]);
 
   const getBreatheInstruction = () => {
@@ -286,7 +291,7 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     switch (mode) {
       case 'PANIC':
         return (
-          <div className="flex flex-col items-center text-center animate-fade-in w-full max-w-sm">
+          <div className="flex flex-col items-center text-center animate-scale-in w-full max-w-sm">
             <div className="relative mb-8">
                <div className="w-40 h-40 bg-rose-100 rounded-full flex items-center justify-center animate-pulse">
                  <div className="w-32 h-32 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-xl">
@@ -295,230 +300,63 @@ const SosModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                </div>
             </div>
             <h3 className="text-2xl font-bold text-stone-800 mb-2">You are safe.</h3>
-            <p className="text-stone-600 mb-8 px-4 font-medium">
-              This feeling is scary, but it cannot hurt you. It will pass. I am right here.
-            </p>
-            
+            <p className="text-stone-600 mb-8 px-4 font-medium">This feeling is scary, but it cannot hurt you. It will pass.</p>
             <div className="flex flex-col gap-3 w-full px-4">
-               <a href="tel:988" className="flex items-center justify-center gap-2 w-full py-4 bg-rose-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">
-                 <Phone size={20} /> Call Crisis Line (988)
-               </a>
-               <button 
-                 onClick={() => setMode('BREATHE')}
-                 className="w-full py-4 bg-white border-2 border-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-50 transition-colors"
-               >
-                 Help me breathe
-               </button>
+               <a href="tel:988" className="flex items-center justify-center gap-2 w-full py-4 bg-rose-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-transform duration-short4 ease-emphasized"><Phone size={20} /> Call Crisis Line (988)</a>
+               <button onClick={() => setMode('BREATHE')} className="w-full py-4 bg-white border-2 border-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-50 transition-colors duration-short4">Help me breathe</button>
             </div>
           </div>
         );
-      
       case 'ANXIETY':
         const currentStep = GROUNDING_STEPS[anxietyStep];
         return (
-          <div className="flex flex-col items-center text-center animate-fade-in w-full max-w-sm px-4">
-            <div className="flex items-center gap-2 mb-6">
-              <Eye className="text-teal-600" size={24} />
-              <span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Grounding Technique</span>
-            </div>
-
-            <div className="w-full mb-8">
-               <div className="flex justify-between mb-2 px-2">
-                 {GROUNDING_STEPS.map((_, idx) => (
-                   <div key={idx} className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors ${idx <= anxietyStep ? 'bg-teal-500' : 'bg-stone-200'}`} />
-                 ))}
-               </div>
-            </div>
-
-            <div className={`w-24 h-24 rounded-full ${currentStep.bg} flex items-center justify-center mb-6 transition-colors duration-500`}>
-               <span className={`text-4xl font-bold ${currentStep.color}`}>{currentStep.count}</span>
-            </div>
-
-            <h3 className="text-2xl font-bold text-stone-800 mb-2 transition-all">
-              Find {currentStep.count} {currentStep.label}
-            </h3>
-            <p className="text-stone-500 mb-10 font-medium">
-              Look around you. Take your time.
-            </p>
-
-            {anxietyStep < 4 ? (
-              <button 
-                onClick={() => setAnxietyStep(prev => prev + 1)}
-                className="flex items-center justify-center gap-2 w-full py-4 bg-teal-600 text-white rounded-2xl font-bold shadow-md hover:bg-teal-700 active:scale-95 transition-all"
-              >
-                I found them <ChevronRight size={20} />
-              </button>
-            ) : (
-              <button 
-                onClick={() => setMode('SELECT')}
-                className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white rounded-2xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all"
-              >
-                <Check size={20} /> I feel more grounded
-              </button>
-            )}
+          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4">
+            <div className="flex items-center gap-2 mb-6"><Eye className="text-teal-600" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Grounding Technique</span></div>
+            <div className="w-full mb-8"><div className="flex justify-between mb-2 px-2">{GROUNDING_STEPS.map((_, idx) => (<div key={idx} className={`h-1.5 flex-1 mx-0.5 rounded-full transition-colors duration-medium2 ${idx <= anxietyStep ? 'bg-teal-500' : 'bg-stone-200'}`} />))}</div></div>
+            <div className={`w-24 h-24 rounded-full ${currentStep.bg} flex items-center justify-center mb-6 transition-colors duration-500`}><span className={`text-4xl font-bold ${currentStep.color}`}>{currentStep.count}</span></div>
+            <h3 className="text-2xl font-bold text-stone-800 mb-2 transition-all">Find {currentStep.count} {currentStep.label}</h3>
+            {anxietyStep < 4 ? <button onClick={() => setAnxietyStep(prev => prev + 1)} className="flex items-center justify-center gap-2 w-full py-4 bg-teal-600 text-white rounded-2xl font-bold shadow-md hover:bg-teal-700 active:scale-95 transition-all duration-short4 ease-emphasized">I found them <ChevronRight size={20} /></button> : <button onClick={() => setMode('SELECT')} className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white rounded-2xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all duration-short4 ease-emphasized"><Check size={20} /> I feel more grounded</button>}
           </div>
         );
-
       case 'OVERWHELM':
         return (
-          <div className="flex flex-col items-center text-center animate-fade-in w-full max-w-sm px-4">
-             <div className="flex items-center gap-2 mb-8">
-              <Layers className="text-orange-500" size={24} />
-              <span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Micro-Steps</span>
-            </div>
-
+          <div className="flex flex-col items-center text-center animate-slide-up w-full max-w-sm px-4">
+             <div className="flex items-center gap-2 mb-8"><Layers className="text-orange-500" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Micro-Steps</span></div>
             <h3 className="text-xl font-bold text-stone-800 mb-2">Let's do just one thing.</h3>
-            <p className="text-stone-500 mb-8 font-medium">Forget the rest of the list for now.</p>
-
-            <div className="bg-orange-50 border-2 border-orange-100 p-8 rounded-[2rem] w-full mb-8 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-10">
-                 <Check size={80} className="text-orange-500" />
-               </div>
-               <p className="text-2xl font-bold text-orange-900 leading-tight">
-                 "{MICRO_TASKS[taskIndex]}"
-               </p>
-            </div>
-
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={nextTask}
-                className="flex-1 py-4 bg-white border border-stone-200 text-stone-600 rounded-2xl font-bold hover:bg-stone-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <RefreshCw size={18} /> Skip
-              </button>
-              <button 
-                onClick={() => setMode('SELECT')}
-                className="flex-[2] py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-md hover:bg-orange-600 active:scale-95 transition-all"
-              >
-                I did it
-              </button>
-            </div>
+            <div className="bg-orange-50 border-2 border-orange-100 p-8 rounded-[2rem] w-full mb-8 shadow-sm relative overflow-hidden"><div className="absolute top-0 right-0 p-4 opacity-10"><Check size={80} className="text-orange-500" /></div><p className="text-2xl font-bold text-orange-900 leading-tight">"{MICRO_TASKS[taskIndex]}"</p></div>
+            <div className="flex gap-3 w-full"><button onClick={nextTask} className="flex-1 py-4 bg-white border border-stone-200 text-stone-600 rounded-2xl font-bold hover:bg-stone-50 transition-colors flex items-center justify-center gap-2"><RefreshCw size={18} /> Skip</button><button onClick={() => setMode('SELECT')} className="flex-[2] py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-md hover:bg-orange-600 active:scale-95 transition-all duration-short4 ease-emphasized">I did it</button></div>
           </div>
         );
-
       case 'BREATHE':
         const instr = getBreatheInstruction();
         return (
            <div className="flex flex-col items-center text-center animate-fade-in w-full">
-             <div className="flex items-center gap-2 mb-12">
-               <Wind className="text-blue-500" size={24} />
-               <span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Box Breathing</span>
-             </div>
-
-             <div className="relative flex items-center justify-center mb-12">
-               {/* Outer ring */}
-               <div className={`w-64 h-64 border-4 border-blue-50 rounded-full flex items-center justify-center transition-all duration-1000 ${instr.scale === 'scale-125' ? 'border-blue-100' : ''}`}>
-                  {/* Expanding Circle */}
-                  <div className={`w-40 h-40 bg-blue-100/50 rounded-full absolute transition-all duration-[1000ms] ease-linear ${instr.scale === 'scale-125' ? 'scale-150 opacity-100' : 'scale-100 opacity-60'}`}></div>
-                  
-                  {/* Core Circle */}
-                  <div className="w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 relative">
-                    <span className={`text-2xl font-bold transition-colors duration-300 ${instr.color}`}>{instr.text}</span>
-                    <span className="text-4xl font-bold text-stone-300 mt-1 font-mono">{timer}</span>
-                  </div>
-               </div>
-             </div>
-             
-             <p className="text-stone-400 max-w-xs font-medium">
-               Focus on the circle. Follow the rhythm.
-             </p>
+             <div className="flex items-center gap-2 mb-12"><Wind className="text-blue-500" size={24} /><span className="font-bold text-stone-500 uppercase tracking-widest text-xs">Box Breathing</span></div>
+             <div className="relative flex items-center justify-center mb-12"><div className={`w-64 h-64 border-4 border-blue-50 rounded-full flex items-center justify-center transition-all duration-1000 ease-in-out ${instr.scale === 'scale-125' ? 'border-blue-100' : ''}`}><div className={`w-40 h-40 bg-blue-100/50 rounded-full absolute transition-all duration-[1000ms] ease-linear ${instr.scale === 'scale-125' ? 'scale-150 opacity-100' : 'scale-100 opacity-60'}`}></div><div className="w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 relative"><span className={`text-2xl font-bold transition-colors duration-300 ${instr.color}`}>{instr.text}</span><span className="text-4xl font-bold text-stone-300 mt-1 font-mono">{timer}</span></div></div></div>
+             <p className="text-stone-400 max-w-xs font-medium">Focus on the circle. Follow the rhythm.</p>
            </div>
         );
-        
-      default:
-        return null;
+      default: return null;
     }
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col p-6 animate-fade-in">
-      <div className="flex justify-end">
-        <button 
-          onClick={onClose}
-          className="p-2 bg-stone-100 rounded-full text-stone-500 hover:bg-stone-200 transition-colors"
-        >
-          <X size={24} />
-        </button>
-      </div>
-
+    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col p-6 animate-fade-in transition-all duration-medium2">
+      <div className="flex justify-end"><button onClick={onClose} className="p-2 bg-stone-100 rounded-full text-stone-500 hover:bg-stone-200 transition-colors"><X size={24} /></button></div>
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         {mode === 'SELECT' ? (
           <>
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-stone-800 mb-2">I'm here with you.</h2>
-              <p className="text-stone-500 font-medium">What is happening right now?</p>
-            </div>
-
+            <div className="mb-8 text-center animate-slide-up"><h2 className="text-2xl font-bold text-stone-800 mb-2">I'm here with you.</h2><p className="text-stone-500 font-medium">What is happening right now?</p></div>
             <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
-              <button
-                onClick={() => setMode('PANIC')}
-                className="flex items-center gap-4 p-4 bg-rose-50 border border-rose-100 rounded-3xl hover:bg-rose-100 transition-colors group text-left"
-              >
-                <div className="w-12 h-12 bg-rose-200 rounded-2xl flex items-center justify-center text-rose-600 group-hover:scale-105 transition-transform">
-                  <Zap size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-rose-900">Panic Attack</h3>
-                  <p className="text-xs text-rose-700 font-bold">I need to calm down fast</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => { setAnxietyStep(0); setMode('ANXIETY'); }}
-                className="flex items-center gap-4 p-4 bg-purple-50 border border-purple-100 rounded-3xl hover:bg-purple-100 transition-colors group text-left"
-              >
-                <div className="w-12 h-12 bg-purple-200 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-105 transition-transform">
-                  <Activity size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-purple-900">Anxiety Spiral</h3>
-                  <p className="text-xs text-purple-700 font-bold">My thoughts are racing</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setMode('OVERWHELM')}
-                className="flex items-center gap-4 p-4 bg-orange-50 border border-orange-100 rounded-3xl hover:bg-orange-100 transition-colors group text-left"
-              >
-                <div className="w-12 h-12 bg-orange-200 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-105 transition-transform">
-                  <Layers size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-orange-900">Feeling Overwhelmed</h3>
-                  <p className="text-xs text-orange-700 font-bold">It's all too much</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => { setBreathePhase(0); setTimer(4); setMode('BREATHE'); }}
-                className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-3xl hover:bg-blue-100 transition-colors group text-left"
-              >
-                <div className="w-12 h-12 bg-blue-200 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-105 transition-transform">
-                  <Wind size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-blue-900">Can't Breathe</h3>
-                  <p className="text-xs text-blue-700 font-bold">Help me catch my breath</p>
-                </div>
-              </button>
+              <button onClick={() => setMode('PANIC')} className="flex items-center gap-4 p-4 bg-rose-50 border border-rose-100 rounded-3xl hover:bg-rose-100 transition-colors group text-left animate-slide-up" style={{animationDelay: '0ms'}}><div className="w-12 h-12 bg-rose-200 rounded-2xl flex items-center justify-center text-rose-600 group-hover:scale-105 transition-transform duration-short4 ease-emphasized"><Zap size={24} /></div><div><h3 className="font-bold text-rose-900">Panic Attack</h3><p className="text-xs text-rose-700 font-bold">I need to calm down fast</p></div></button>
+              <button onClick={() => { setAnxietyStep(0); setMode('ANXIETY'); }} className="flex items-center gap-4 p-4 bg-purple-50 border border-purple-100 rounded-3xl hover:bg-purple-100 transition-colors group text-left animate-slide-up" style={{animationDelay: '50ms'}}><div className="w-12 h-12 bg-purple-200 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-105 transition-transform duration-short4 ease-emphasized"><Activity size={24} /></div><div><h3 className="font-bold text-purple-900">Anxiety Spiral</h3><p className="text-xs text-purple-700 font-bold">My thoughts are racing</p></div></button>
+              <button onClick={() => setMode('OVERWHELM')} className="flex items-center gap-4 p-4 bg-orange-50 border border-orange-100 rounded-3xl hover:bg-orange-100 transition-colors group text-left animate-slide-up" style={{animationDelay: '100ms'}}><div className="w-12 h-12 bg-orange-200 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-105 transition-transform duration-short4 ease-emphasized"><Layers size={24} /></div><div><h3 className="font-bold text-orange-900">Feeling Overwhelmed</h3><p className="text-xs text-orange-700 font-bold">It's all too much</p></div></button>
+              <button onClick={() => { setBreathePhase(0); setTimer(4); setMode('BREATHE'); }} className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-3xl hover:bg-blue-100 transition-colors group text-left animate-slide-up" style={{animationDelay: '150ms'}}><div className="w-12 h-12 bg-blue-200 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-105 transition-transform duration-short4 ease-emphasized"><Wind size={24} /></div><div><h3 className="font-bold text-blue-900">Can't Breathe</h3><p className="text-xs text-blue-700 font-bold">Help me catch my breath</p></div></button>
             </div>
-            
-            <p className="mt-8 text-xs text-stone-400 text-center max-w-xs font-medium">
-              If you are in immediate danger, please call emergency services or 988.
-            </p>
+            <p className="mt-8 text-xs text-stone-400 text-center max-w-xs font-medium animate-fade-in">If you are in immediate danger, please call emergency services or 988.</p>
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center">
-            <button 
-              onClick={() => setMode('SELECT')}
-              className="self-start mb-4 text-stone-500 font-bold text-sm flex items-center gap-1 hover:text-stone-800"
-            >
-              ← Back
-            </button>
-            <div className="flex-1 flex flex-col items-center justify-center w-full">
-              {renderCrisisContent()}
-            </div>
-          </div>
+          <div className="w-full h-full flex flex-col items-center"><button onClick={() => setMode('SELECT')} className="self-start mb-4 text-stone-500 font-bold text-sm flex items-center gap-1 hover:text-stone-800 transition-colors duration-short4">← Back</button><div className="flex-1 flex flex-col items-center justify-center w-full">{renderCrisisContent()}</div></div>
         )}
       </div>
     </div>

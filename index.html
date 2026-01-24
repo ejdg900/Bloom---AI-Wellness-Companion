@@ -26,9 +26,16 @@
                 onSecondary: '#ffffff',
                 secondaryContainer: '#ffe4e6', // Rose 100
                 onSecondaryContainer: '#9f1239', // Rose 800
-                surface: '#fafaf9', // Stone 50 (Warmer than Slate)
-                surfaceContainer: '#ffffff',
-                outline: '#e7e5e4', // Stone 200
+                tertiary: '#6366f1', // Indigo 500
+                tertiaryContainer: '#e0e7ff', // Indigo 100
+                surface: '#f9fafb', // Gray 50
+                surfaceContainerLow: '#ffffff',
+                surfaceContainer: '#f3f4f6', // Gray 100
+                surfaceContainerHigh: '#e5e7eb', // Gray 200
+                surfaceContainerHighest: '#d1d5db', // Gray 300
+                onSurface: '#1f2937', // Gray 800
+                onSurfaceVariant: '#4b5563', // Gray 600
+                outline: '#d1d5db', // Gray 300
               }
             },
             borderRadius: {
@@ -36,6 +43,53 @@
               '2xl': '16px',
               '3xl': '24px',
               '4xl': '32px',
+            },
+            transitionTimingFunction: {
+              'emphasized': 'cubic-bezier(0.2, 0.0, 0.0, 1.0)',
+              'emphasized-decelerate': 'cubic-bezier(0.05, 0.7, 0.1, 1.0)',
+              'emphasized-accelerate': 'cubic-bezier(0.3, 0.0, 0.8, 0.15)',
+              'standard': 'cubic-bezier(0.2, 0.0, 0, 1.0)',
+              'standard-decelerate': 'cubic-bezier(0, 0, 0, 1)',
+              'standard-accelerate': 'cubic-bezier(0.3, 0, 1, 1)',
+            },
+            transitionDuration: {
+              'short1': '50ms',
+              'short2': '100ms',
+              'short3': '150ms',
+              'short4': '200ms',
+              'medium1': '250ms',
+              'medium2': '300ms',
+              'medium3': '350ms',
+              'medium4': '400ms',
+              'long1': '450ms',
+              'long2': '500ms',
+            },
+            keyframes: {
+              heartbeat: {
+                '0%, 100%': { transform: 'scale(1)' },
+                '14%': { transform: 'scale(1.1)' },
+                '28%': { transform: 'scale(1)' },
+                '42%': { transform: 'scale(1.1)' },
+                '70%': { transform: 'scale(1)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              scaleIn: {
+                '0%': { transform: 'scale(0.8)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              },
+              slideUp: {
+                 '0%': { transform: 'translateY(20px)', opacity: '0' },
+                 '100%': { transform: 'translateY(0)', opacity: '1' }
+              }
+            },
+            animation: {
+              heartbeat: 'heartbeat 2.5s ease-in-out infinite',
+              'fade-in': 'fadeIn 0.4s cubic-bezier(0.05, 0.7, 0.1, 1.0) forwards',
+              'scale-in': 'scaleIn 0.3s cubic-bezier(0.2, 0.0, 0.0, 1.0) forwards',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.2, 0.0, 0.0, 1.0) forwards',
             }
           }
         }
@@ -73,7 +127,7 @@
 }
 </script>
 </head>
-  <body class="bg-stone-100 text-stone-800 antialiased flex justify-center sm:items-center min-h-screen">
+  <body class="bg-stone-200 text-stone-800 antialiased flex justify-center sm:items-center min-h-screen">
     <!-- Responsive Container: Mobile (Full), Tablet/Desktop (Bounded & Centered) -->
     <div id="root" class="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl h-full sm:h-[90vh]"></div>
   </body>

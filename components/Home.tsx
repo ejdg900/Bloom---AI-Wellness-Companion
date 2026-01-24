@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { QUOTES } from '../constants';
 import { MoodEntry, AppMode } from '../types';
-import { Quote, Sparkles, ArrowRight, Sun, Moon, CloudSun, Wind, Activity } from 'lucide-react';
+import { Quote, Sparkles, ArrowRight, Sun, Moon, CloudSun, Wind, Activity, Sun as SunIcon } from 'lucide-react';
 
 interface HomeProps {
   moodEntries: MoodEntry[];
@@ -30,7 +30,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
     : null;
 
   return (
-    <div className="flex flex-col h-full bg-stone-50/50">
+    <div className="flex flex-col h-full bg-m3-surface animate-fade-in">
       <div className="p-5 md:p-8 pb-32 overflow-y-auto custom-scrollbar">
         
         {/* Header Section */}
@@ -44,7 +44,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
               Hello, <span className="font-serif italic text-m3-primary">Friend</span>
             </h1>
           </div>
-          <div className="w-10 h-10 rounded-full bg-stone-200 border-2 border-white shadow-sm overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-m3-surfaceContainerHighest border-2 border-white shadow-sm overflow-hidden">
             {/* Placeholder User Avatar */}
              <div className="w-full h-full bg-gradient-to-tr from-teal-200 to-rose-200" />
           </div>
@@ -86,8 +86,8 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
         {/* Secondary Grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Daily Quote Card */}
-          <div className="bg-white p-5 rounded-[2rem] border border-stone-100 shadow-sm flex flex-col justify-between h-48 relative overflow-hidden group hover:border-stone-200 transition-colors">
-            <div className="absolute -right-4 -top-4 text-stone-50 opacity-50 group-hover:scale-110 transition-transform duration-500">
+          <div className="bg-m3-surfaceContainerLow p-5 rounded-[2rem] border border-stone-100 shadow-sm flex flex-col justify-between h-48 relative overflow-hidden group hover:border-stone-200 transition-colors">
+            <div className="absolute -right-4 -top-4 text-stone-50 opacity-10 group-hover:scale-110 transition-transform duration-500">
                <Quote size={100} />
             </div>
             <div className="relative z-10">
@@ -106,7 +106,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
           {/* Mood Pulse Card */}
           <div 
             onClick={() => onNavigate(AppMode.MOOD)}
-            className="bg-white p-5 rounded-[2rem] border border-stone-100 shadow-sm flex flex-col justify-between h-48 cursor-pointer hover:border-teal-100 transition-colors group"
+            className="bg-m3-surfaceContainerLow p-5 rounded-[2rem] border border-stone-100 shadow-sm flex flex-col justify-between h-48 cursor-pointer hover:border-teal-100 transition-colors group"
           >
             <div className="flex justify-between items-start">
                <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">
@@ -146,7 +146,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
                  icon={<Wind size={18} />}
                  label="Breathe"
                  color="bg-sky-100 text-sky-700"
-                 onClick={() => { /* Placeholder for direct tool access */ }}
+                 onClick={() => { /* Placeholder */ }}
               />
                <ToolCard 
                  icon={<Activity size={18} />}
@@ -155,7 +155,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
                  onClick={() => { /* Placeholder */ }}
               />
                <ToolCard 
-                 icon={<Sun size={18} />}
+                 icon={<SunIcon size={18} />}
                  label="Body Scan"
                  color="bg-orange-100 text-orange-700"
                  onClick={() => { /* Placeholder */ }}
@@ -171,7 +171,7 @@ const Home: React.FC<HomeProps> = ({ moodEntries, onNavigate }) => {
 const ToolCard: React.FC<{ icon: React.ReactNode, label: string, color: string, onClick: () => void }> = ({ icon, label, color, onClick }) => (
   <button 
     onClick={onClick}
-    className="flex items-center gap-3 p-3 pr-5 bg-white rounded-2xl border border-stone-100 shadow-sm flex-shrink-0 active:scale-95 transition-transform"
+    className="flex items-center gap-3 p-3 pr-5 bg-m3-surfaceContainerLow rounded-2xl border border-stone-100 shadow-sm flex-shrink-0 active:scale-95 transition-transform"
   >
     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
       {icon}

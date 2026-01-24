@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MOODS } from '../constants';
 import { MoodEntry } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Calendar, Smile, Plus } from 'lucide-react';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis, CartesianGrid } from 'recharts';
+import { Calendar, Smile, Plus, TrendingUp, BarChart3, Clock } from 'lucide-react';
 
 interface MoodTrackerProps {
   entries: MoodEntry[];
   onAddEntry: (entry: MoodEntry) => void;
 }
+
+// Helper to map mood labels to a numeric score for the chart (Valence)
+const getMoodScore = (label: string): number => {
+  switch(label) {
+    case 'Happy': return 5;
+    case 'Calm': return 4;
+    case 'Neutral': return 3;
+    case 'Sad': return 2;
+    case 'Frustrated': return 2;
+    case 'Anxious': return 1;
+    case 'Overwhelmed': return 1;
+    default: return 3;
+  }
+};
 
 const MoodTracker: React.FC<MoodTrackerProps> = ({ entries, onAddEntry }) => {
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
@@ -28,133 +42,197 @@ const MoodTracker: React.FC<MoodTrackerProps> = ({ entries, onAddEntry }) => {
     setNote('');
   };
 
-  // Prepare data for chart - simple count by label
-  const chartData = MOODS.map(m => ({
-    name: m.label,
-    count: entries.filter(e => e.label === m.label).length,
-    emoji: m.emoji,
-    color: m.color
-  }));
+  // Prepare data for "Emotional Flow" chart
+  const chartData = useMemo(() => {
+    // Take last 7 entries, reverse to show chronological order
+    const recent = [...entries].slice(-10);
+    return recent.map(e => ({
+      time: e.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      score: getMoodScore(e.label),
+      mood: e.mood,
+      label: e.label
+    }));
+  }, [entries]);
 
-  const getBarColor = (label: string) => {
-    switch(label) {
-      case 'Happy': return '#facc15';
-      case 'Calm': return '#14b8a6';
-      case 'Neutral': return '#9ca3af';
-      case 'Sad': return '#3b82f6';
-      case 'Anxious': return '#a855f7';
-      case 'Frustrated': return '#f97316';
-      case 'Overwhelmed': return '#ef4444';
-      default: return '#cbd5e1';
-    }
-  };
+  // Calculate Stats
+  const topMoodLabel = useMemo(() => {
+    if (entries.length === 0) return 'None';
+    const counts: Record<string, number> = {};
+    entries.forEach(e => counts[e.label] = (counts[e.label] || 0) + 1);
+    return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+  }, [entries]);
 
   return (
-    <div className="p-4 h-full overflow-y-auto bg-m3-surface pb-24">
-      {/* Title */}
-      <h2 className="text-2xl font-normal text-slate-800 mb-6 flex items-center gap-3 pl-2">
-        <Smile className="text-m3-primary" size={28} /> 
-        <span>Mood Check-in</span>
-      </h2>
-
-      {/* Input Section - M3 Elevated Card */}
-      <div className="bg-m3-surfaceContainer p-5 rounded-3xl shadow-sm border border-m3-outline mb-6">
-        <h3 className="text-lg font-medium text-slate-700 mb-4 pl-1">How are you feeling?</h3>
-        
-        {/* Mood Selection Grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 gap-y-6 mb-6">
-          {MOODS.map((m, idx) => (
-            <button
-              key={m.label}
-              onClick={() => setSelectedMood(idx)}
-              className={`flex flex-col items-center p-2 rounded-2xl transition-all duration-200 ${
-                selectedMood === idx
-                  ? `${m.color} ring-2 ring-offset-2 ring-m3-primary scale-105 shadow-md`
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:shadow-sm'
-              }`}
-            >
-              <span className="text-3xl mb-2 filter drop-shadow-sm">{m.emoji}</span>
-              <span className="text-[11px] font-medium text-center leading-tight w-full break-words">{m.label}</span>
-            </button>
-          ))}
-        </div>
-        
-        {selectedMood !== null && (
-          <div className="animate-fade-in">
-            <textarea
-              className="w-full p-4 bg-slate-50 rounded-2xl border border-transparent focus:border-m3-primary focus:bg-white focus:ring-0 transition-all mb-4 resize-none text-slate-700"
-              placeholder="What's making you feel this way? (Optional)"
-              rows={3}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <button
-              onClick={handleSave}
-              className="w-full py-3 bg-m3-primary text-onPrimary rounded-full font-medium transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-            >
-              <Plus size={20} /> Save Entry
-            </button>
-          </div>
-        )}
+    <div className="flex flex-col h-full bg-m3-surface animate-fade-in">
+      {/* Sticky Header */}
+      <div className="px-6 py-4 bg-m3-surface/90 backdrop-blur-md sticky top-0 z-10 border-b border-m3-outline/50">
+         <h2 className="text-2xl font-normal text-m3-onSurface flex items-center gap-3">
+          <Smile className="text-m3-primary" size={28} /> 
+          <span>Mood Insights</span>
+        </h2>
       </div>
 
-      {/* Stats Section */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Mood Overview Chart - M3 Elevated Card */}
-        <div className="bg-m3-surfaceContainer p-5 rounded-3xl shadow-sm border border-m3-outline">
-          <h3 className="text-lg font-medium text-slate-700 mb-2 pl-1">
-             Mood Overview
-          </h3>
-          <div className="h-64 w-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-32 custom-scrollbar space-y-6 pt-4">
+        
+        {/* Input Section - M3 Elevated Card */}
+        <div className="bg-m3-surfaceContainerLow p-5 rounded-[28px] shadow-sm border border-m3-outline/50">
+          <h3 className="text-lg font-medium text-m3-onSurfaceVariant mb-4 pl-1">How are you feeling right now?</h3>
+          
+          {/* Mood Selection Grid */}
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 gap-y-4 mb-6">
+            {MOODS.map((m, idx) => (
+              <button
+                key={m.label}
+                onClick={() => setSelectedMood(idx)}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all duration-200 aspect-square ${
+                  selectedMood === idx
+                    ? `${m.color} ring-2 ring-offset-2 ring-m3-primary scale-105 shadow-md`
+                    : 'bg-m3-surfaceContainerHigh text-m3-onSurfaceVariant hover:bg-m3-surfaceContainerHighest'
+                }`}
+              >
+                <span className="text-3xl mb-1 filter drop-shadow-sm">{m.emoji}</span>
+              </button>
+            ))}
+          </div>
+          
+          {/* Label of selected mood */}
+          {selectedMood !== null && (
+             <div className="text-center font-bold text-m3-primary mb-4 animate-fade-in">
+                {MOODS[selectedMood].label}
+             </div>
+          )}
+
+          {selectedMood !== null && (
+            <div className="animate-fade-in space-y-3">
+              <textarea
+                className="w-full p-4 bg-m3-surfaceContainerHigh rounded-2xl border-none focus:ring-2 focus:ring-m3-primary/50 placeholder:text-stone-400 text-stone-700 resize-none transition-all"
+                placeholder="Add a note... (optional)"
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+              <button
+                onClick={handleSave}
+                className="w-full py-3.5 bg-m3-primary text-m3-onPrimary rounded-full font-bold text-sm tracking-wide shadow-md hover:shadow-lg hover:bg-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={18} strokeWidth={3} /> LOG MOOD
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+           <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-[24px] border border-indigo-100 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Total Logs</span>
+              <span className="text-3xl font-bold text-indigo-900">{entries.length}</span>
+           </div>
+           <div className="bg-gradient-to-br from-teal-50 to-white p-4 rounded-[24px] border border-teal-100 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-xs font-bold text-teal-400 uppercase tracking-widest mb-1">Top Mood</span>
+              <span className="text-xl font-bold text-teal-900 truncate w-full">{topMoodLabel}</span>
+           </div>
+        </div>
+
+        {/* Chart Section - Emotional Flow */}
+        <div className="bg-m3-surfaceContainerLow p-6 rounded-[28px] shadow-sm border border-m3-outline/50">
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="text-lg font-medium text-m3-onSurfaceVariant flex items-center gap-2">
+               <TrendingUp size={20} className="text-m3-primary" /> Emotional Flow
+             </h3>
+             <span className="text-[10px] bg-m3-surfaceContainerHigh px-2 py-1 rounded-full text-m3-onSurfaceVariant font-bold">Last 10 entries</span>
+          </div>
+          
+          <div className="h-48 w-full">
+            {entries.length < 2 ? (
+               <div className="h-full flex items-center justify-center text-stone-400 text-sm italic">
+                  Not enough data yet. Log a few more moods!
+               </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
-              {/* Corrected margins and added padding to XAxis to prevent clipping/overlapping */}
-              <BarChart data={chartData} margin={{ top: 20, right: 0, left: 0, bottom: 25 }}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                 <XAxis 
-                  dataKey="emoji" 
-                  tick={{fontSize: 22}} 
-                  axisLine={false} 
-                  tickLine={false} 
-                  interval={0} 
-                  dy={10}
-                  padding={{ left: 15, right: 15 }}
+                   dataKey="time" 
+                   tick={{fontSize: 10, fill: '#9ca3af'}} 
+                   axisLine={false} 
+                   tickLine={false} 
+                   interval="preserveStartEnd"
                 />
-                <YAxis hide width={0} />
+                <YAxis hide domain={[0, 6]} />
                 <Tooltip 
-                  cursor={{fill: '#f1f5f9', radius: 8}} 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} 
+                   content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-stone-800 text-white text-xs p-2 rounded-lg shadow-xl border border-stone-700">
+                            <p className="font-bold flex items-center gap-1">{data.mood} {data.label}</p>
+                            <p className="opacity-70 text-[10px]">{data.time}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                   }}
                 />
-                <Bar dataKey="count" radius={[8, 8, 8, 8]} barSize={32}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getBarColor(entry.name)} />
-                  ))}
-                </Bar>
-              </BarChart>
+                <Area 
+                   type="monotone" 
+                   dataKey="score" 
+                   stroke="#0d9488" 
+                   strokeWidth={3} 
+                   fillOpacity={1} 
+                   fill="url(#colorScore)" 
+                   activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {/* Recent Entries - M3 Elevated Card */}
-        <div className="bg-m3-surfaceContainer p-5 rounded-3xl shadow-sm border border-m3-outline">
-           <h3 className="text-lg font-medium text-slate-700 mb-4 pl-1 flex items-center gap-2">
-            <Calendar size={20} className="text-m3-primary" /> Recent Entries
+        {/* History Timeline */}
+        <div className="bg-m3-surfaceContainerLow p-6 rounded-[28px] shadow-sm border border-m3-outline/50">
+           <h3 className="text-lg font-medium text-m3-onSurfaceVariant mb-4 flex items-center gap-2">
+            <Clock size={20} className="text-m3-primary" /> History
           </h3>
-          <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="relative space-y-0 pl-2">
+            {/* Vertical Line */}
+            <div className="absolute top-4 bottom-4 left-[15px] w-0.5 bg-m3-outline"></div>
+
             {entries.slice().reverse().map((entry) => (
-              <div key={entry.id} className="flex items-start gap-4 p-4 rounded-2xl bg-m3-surface border border-slate-100/50">
-                <div className="text-2xl pt-0.5">{entry.mood}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                    <span className="font-medium text-slate-800 text-sm">{entry.label}</span>
-                    <span className="text-[10px] text-slate-400 whitespace-nowrap mt-0.5 sm:mt-0 font-medium">
-                      {entry.timestamp.toLocaleDateString()} • {entry.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </span>
-                  </div>
-                  {entry.note && <p className="text-xs text-slate-600 break-words leading-relaxed">{entry.note}</p>}
+              <div key={entry.id} className="relative pl-8 pb-6 last:pb-0 group">
+                {/* Timeline Dot */}
+                <div className="absolute left-[3px] top-1 w-6 h-6 rounded-full bg-m3-surface border-2 border-m3-primary flex items-center justify-center z-10 text-[10px] group-hover:scale-110 transition-transform">
+                  <div className="w-2 h-2 rounded-full bg-m3-primary"></div>
+                </div>
+                
+                <div className="flex items-start justify-between">
+                   <div>
+                      <div className="flex items-center gap-2 mb-1">
+                         <span className="text-xl">{entry.mood}</span>
+                         <span className="font-bold text-stone-700">{entry.label}</span>
+                      </div>
+                      {entry.note && (
+                         <p className="text-sm text-stone-500 bg-stone-50 p-2 rounded-lg border border-stone-100 inline-block max-w-full break-words">
+                            {entry.note}
+                         </p>
+                      )}
+                   </div>
+                   <div className="text-[10px] font-bold text-stone-400 bg-stone-100 px-2 py-1 rounded-full whitespace-nowrap">
+                      {entry.timestamp.toLocaleDateString() === new Date().toLocaleDateString() 
+                         ? entry.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                         : entry.timestamp.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
       </div>
     </div>
   );
