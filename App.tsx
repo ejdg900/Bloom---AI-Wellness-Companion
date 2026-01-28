@@ -7,7 +7,8 @@ import BloomLogo from './components/BloomLogo';
 import { AppMode, MoodEntry, Message, JournalEntry } from './types';
 import { 
   MessageCircle, Smile, Home as HomeIcon, BookHeart, Heart, X, 
-  Zap, Eye, Layers, Activity, Wind, ChevronRight, Check, RefreshCw, Phone 
+  Zap, Eye, Layers, Activity, Wind, ChevronRight, Check, RefreshCw, Phone,
+  Maximize, Minimize
 } from 'lucide-react';
 
 // Helper to revive Date objects from JSON strings during localStorage parsing
@@ -22,6 +23,7 @@ const dateReviver = (key: string, value: any) => {
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [sosOpen, setSosOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // --- STATE WITH LOCAL STORAGE PERSISTENCE ---
 
@@ -63,7 +65,7 @@ const App: React.FC = () => {
     return [];
   });
 
-  // --- EFFECT HOOKS TO SAVE DATA ON CHANGE ---
+  // --- EFFECT HOOKS ---
 
   useEffect(() => {
     localStorage.setItem('bloom_mood_entries', JSON.stringify(moodEntries));
@@ -76,6 +78,15 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('bloom_chat_history', JSON.stringify(chatHistory));
   }, [chatHistory]);
+
+  // Handle Fullscreen State changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+        setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // --- EVENT HANDLERS ---
 
@@ -100,6 +111,18 @@ const App: React.FC = () => {
       timestamp: new Date()
     };
     setChatHistory(prev => [...prev, contextMessage]);
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
   };
 
   const renderContent = () => {
@@ -131,7 +154,15 @@ const App: React.FC = () => {
           <BloomLogo size={36} />
           <h1 className="text-xl font-bold text-m3-onSurface tracking-tight">Bloom</h1>
         </div>
-        <div className="w-10"></div> {/* Spacer to balance logo */}
+        
+        {/* Fullscreen Toggle Button (Replaces Spacer) */}
+        <button 
+            onClick={toggleFullscreen} 
+            className="w-10 h-10 flex items-center justify-center text-m3-onSurfaceVariant opacity-50 hover:opacity-100 transition-opacity rounded-full hover:bg-m3-surfaceContainer"
+            aria-label="Toggle Fullscreen"
+        >
+            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+        </button>
       </header>
 
       {/* Main Content */}
@@ -144,6 +175,25 @@ const App: React.FC = () => {
 
       {/* M3 Navigation Bar with Centered SOS Heart */}
       <nav className="bg-m3-surfaceContainerLow pb-4 z-20 border-t border-m3-outline/50 relative pb-safe">
+        
+        {/* Floating SOS Button - Absolute Centered */}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-10 z-30">
+            <button 
+                onClick={() => setSosOpen(true)}
+                className="group relative flex items-center justify-center"
+                aria-label="Emergency SOS"
+            >
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 shadow-xl shadow-rose-200 text-white flex items-center justify-center border-[6px] border-m3-surfaceContainerLow animate-heartbeat active:scale-95 transition-transform">
+                    <div className="relative flex items-center justify-center">
+                    <Heart size={44} fill="currentColor" strokeWidth={0} />
+                    <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[11px] font-black text-rose-500 mt-[2px] tracking-tighter">
+                        SOS
+                    </span>
+                    </div>
+                </div>
+            </button>
+        </div>
+
         <div className="flex justify-between items-end px-4 pt-2">
             <NavButton
                 active={mode === AppMode.HOME}
@@ -158,23 +208,8 @@ const App: React.FC = () => {
                 label="Chat"
             />
             
-            {/* Center SOS Heart Button - Floating Style (Updated: Bigger & Text inside) */}
-            <div className="relative -top-10 mx-2">
-               <button 
-                  onClick={() => setSosOpen(true)}
-                  className="group relative flex items-center justify-center"
-                  aria-label="Emergency SOS"
-               >
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 shadow-xl shadow-rose-200 text-white flex items-center justify-center border-[6px] border-m3-surfaceContainerLow animate-heartbeat active:scale-95 transition-transform">
-                     <div className="relative flex items-center justify-center">
-                        <Heart size={44} fill="currentColor" strokeWidth={0} />
-                        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[11px] font-black text-rose-500 mt-[2px] tracking-tighter">
-                          SOS
-                        </span>
-                     </div>
-                  </div>
-               </button>
-            </div>
+            {/* Spacer for the Floating SOS Button */}
+            <div className="w-16 h-full" aria-hidden="true" />
 
             <NavButton
                 active={mode === AppMode.MOOD}

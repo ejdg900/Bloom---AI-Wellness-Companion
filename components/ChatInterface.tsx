@@ -246,7 +246,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, setMessages }) 
         {/* Gradient fade above input */}
         <div className="h-6 bg-gradient-to-t from-m3-surfaceContainer to-transparent w-full pointer-events-none"></div>
         
-        <div className="bg-m3-surfaceContainer border-t border-m3-outline p-4 pb-6 w-full">
+        {/* Added pb-14 to clear the floating SOS button from the nav bar */}
+        <div className="bg-m3-surfaceContainer border-t border-m3-outline p-4 pb-14 w-full">
             <div className="max-w-4xl mx-auto relative flex items-end gap-2 w-full">
               <textarea
                 value={inputText}
